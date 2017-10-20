@@ -156,6 +156,7 @@ class Network(object):
         n = len(training_data)
         evaluation_cost, evaluation_accuracy = [], []
         training_cost, training_accuracy = [], []
+        maxepoch = -1
         for j in xrange(epochs):
             random.shuffle(training_data)
             mini_batches = [
@@ -171,7 +172,7 @@ class Network(object):
                 print "Cost on training data: {}".format(cost)
             if monitor_training_accuracy:
                 accuracy = self.accuracy(training_data, convert=True)
-                training_accuracy.append(accuracy)
+                training_accuracy.append(accuracy*1.0/n)
                 print "Accuracy on training data: {} / {}".format(
                     accuracy, n)
             if monitor_evaluation_cost:
@@ -180,10 +181,13 @@ class Network(object):
                 print "Cost on evaluation data: {}".format(cost)
             if monitor_evaluation_accuracy:
                 accuracy = self.accuracy(evaluation_data)
-                evaluation_accuracy.append(accuracy)
+                evaluation_accuracy.append(accuracy*1.0/n_data)
                 print "Accuracy on evaluation data: {} / {}".format(
                     self.accuracy(evaluation_data), n_data)
-            print
+                if maxepoch < 0 or evaluation_accuracy[maxepoch] < accuracy *1.0/n_data:
+                    maxepoch = j
+        print "Max evaluation accuracy: {} in epoch {}.".format(
+            evaluation_accuracy[maxepoch], maxepoch)
         return evaluation_cost, evaluation_accuracy, \
             training_cost, training_accuracy
 

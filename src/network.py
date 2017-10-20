@@ -15,6 +15,7 @@ import random
 
 # Third-party libraries
 import numpy as np
+from time import clock
 
 class Network(object):
 
@@ -42,7 +43,7 @@ class Network(object):
         return a
 
     def SGD(self, training_data, epochs, mini_batch_size, eta,
-            test_data=None):
+            notimprovinginn = 10, test_data=None):
         """Train the neural network using mini-batch stochastic
         gradient descent.  The ``training_data`` is a list of tuples
         ``(x, y)`` representing the training inputs and the desired
@@ -53,18 +54,44 @@ class Network(object):
         tracking progress, but slows things down substantially."""
         if test_data: n_test = len(test_data)
         n = len(training_data)
+        evaluation_accuracy = []
+        training_cost = []
+        elapsing_time = []
+        start = clock()
+        changingeta = eta
+        prev = 0.0
+        count = 0
+        realepochs = 0
         for j in xrange(epochs):
+            realepochs = realepochs + 1
             random.shuffle(training_data)
             mini_batches = [
                 training_data[k:k+mini_batch_size]
                 for k in xrange(0, n, mini_batch_size)]
             for mini_batch in mini_batches:
-                self.update_mini_batch(mini_batch, eta)
+                self.update_mini_batch(mini_batch, changingeta)
+            finish = clock()
+            elapsing_time.append(finish - start)
+            training_cost.append(self.total_cost(training_data))
             if test_data:
+                temp = self.evaluate(test_data)
                 print "Epoch {0}: {1} / {2}".format(
-                    j, self.evaluate(test_data), n_test)
+                    j, temp, n_test)
+                accuracy = temp * 100.0/ n_test
+                evaluation_accuracy.append(accuracy)
+                if self.notimproving(prev, accuracy):
+                    count = count + 1
+                    if count < notimprovinginn:
+                        continue
+                    changingeta = changingeta /2.0
+                    print "eta: {0}".format(changingeta)
+                    if changingeta < eta / 128.0:
+                        break
+                count = 0
+                prev = accuracy
             else:
                 print "Epoch {0} complete".format(j)
+        return training_cost, evaluation_accuracy, elapsing_time, realepochs
 
     def update_mini_batch(self, mini_batch, eta):
         """Update the network's weights and biases by applying
@@ -130,6 +157,28 @@ class Network(object):
         """Return the vector of partial derivatives \partial C_x /
         \partial a for the output activations."""
         return (output_activations-y)
+
+    def total_cost(self, data):
+        """Return the total cost for the data set ``data``.  The flag
+        ``convert`` should be set to False if the data set is the
+        training data (the usual case), and to True if the data set is
+        the validation or test data.  See comments on the similar (but
+        reversed) convention for the ``accuracy`` method, above.
+        """
+        cost = 0.0
+        for x, y in data:
+            a = self.feedforward(x)
+            cost += self.costfn(a, y)/len(data)
+        return cost
+
+    def costfn(self, a, y):
+        """Return the cost associated with an output ``a`` and desired output
+        ``y``.
+
+        """
+        return 0.5*np.linalg.norm(a-y)**2
+    def notimproving(self, prev, cur):
+        return cur <= prev
 
 #### Miscellaneous functions
 def sigmoid(z):
